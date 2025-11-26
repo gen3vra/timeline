@@ -1,0 +1,1420 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Story Timeline</title>
+    <style>
+        :root {
+            --bg: #0b0b0c;
+            --panel: #121214;
+            --panel2: #18181b;
+            --border: #2a2a2e;
+            --muted: #a3a3ad;
+            --text: #f3f3f7;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .wrap {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        header,
+        footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .title-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            gap: 12px;
+        }
+
+        .big-title {
+            font-size: clamp(24px, 4.5vw, 40px);
+            line-height: 1.2;
+            font-weight: 700;
+            letter-spacing: 0.2px;
+            margin: 0;
+            padding: 6px 10px;
+            border-radius: 12px;
+            border: 1px dashed transparent;
+        }
+
+        .big-title[contenteditable="true"]:focus {
+            outline: none;
+            border-color: var(--border);
+            background: var(--panel2);
+        }
+
+        .big-title[contenteditable="true"]:empty:before {
+            content: attr(data-placeholder);
+            color: var(--muted);
+            opacity: 0.9;
+        }
+
+        .placeholder {
+            color: var(--muted);
+            opacity: 0.9;
+        }
+
+        .btn[disabled],
+        select[disabled] {
+            opacity: .5;
+            cursor: not-allowed;
+            filter: grayscale(1);
+        }
+
+        .btn[disabled]:hover {
+            background: var(--panel2);
+        }
+
+        .btn {
+            background: var(--panel2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 6px 10px;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background: #222227;
+        }
+
+        .btn.primary {
+            background: #3b82f6;
+            /* bright blue */
+            border-color: #2563eb;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .btn.primary:hover {
+            background: #2563eb;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .toolbar .group {
+            display: flex;
+            gap: 6px;
+        }
+
+        .app-logo {
+            height: 80px;
+            width: auto;
+            margin-left: 16px;
+            margin-right: 12px;
+        }
+
+        .brand {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .copyright {
+            font-size: 11px;
+            color: var(--muted);
+            line-height: 1.2;
+            text-align: center;
+        }
+
+        .track {
+            position: relative;
+            height: 300px;
+            /* keep vertical padding, remove left/right padding so ends have no horizontal inset */
+            padding: 44px 50px;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            background:
+                repeating-linear-gradient(to right, #1a1a1d, #1a1a1d 40px, #202025 40px, #202025 80px),
+                repeating-linear-gradient(to bottom, #1a1a1d, #1a1a1d 40px, #18181b 40px, #18181b 80px);
+            background-size: 80px 80px;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .baseline {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            height: 2px;
+            background: #3a3a41;
+            border-radius: 2px;
+
+            /* stretch across the full track (no horizontal padding) */
+            left: 10px;
+            right: 10px;
+        }
+
+        .tick {
+            position: absolute;
+            top: 10px;
+            font-size: 10px;
+            color: var(--muted);
+            pointer-events: none;
+        }
+
+        .marker {
+            position: absolute;
+            top: 44px;
+            bottom: 44px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            cursor: grab;
+        }
+
+        .marker:active {
+            cursor: grabbing;
+        }
+
+        .marker .tag {
+            background: rgba(30, 30, 35, 0.7);
+            border: 2px solid currentColor;
+            padding: 4px 10px;
+            font-size: 13px;
+            font-weight: 500;
+            border-radius: 999px;
+            backdrop-filter: blur(4px);
+            color: #fff;
+            box-shadow: 0 0 4px currentColor;
+            transition: margin-top .12s ease;
+            white-space: nowrap;
+            max-width: 160px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .marker .stem {
+            width: 2px;
+            flex: 1;
+            position: relative;
+            background: var(--stem-color, currentColor);
+        }
+
+        .marker .stem::after {
+            content: "";
+            position: absolute;
+            bottom: -4px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--stem-color, currentColor);
+        }
+
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 14px;
+            flex-grow: 1;
+        }
+
+        .cols {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .cols * {
+            width: 100%;
+        }
+
+        ul {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+
+        li.row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 6px 8px;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        li.row:hover {
+            background: #1c1c21;
+        }
+
+        li.row.sel {
+            background: #1f2330;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+        }
+
+        label.small {
+            color: var(--muted);
+            font-size: 12px;
+            display: inline-block;
+            width: 80px;
+        }
+
+        input[type="text"],
+        textarea {
+            width: 100%;
+            background: var(--panel2);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 10px;
+            padding: 6px 8px;
+            font-size: 14px;
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .muted {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .help {
+            color: var(--muted);
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        footer {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .tooltip {
+            position: fixed;
+            background: #111;
+            color: #eee;
+            border: 1px solid #444;
+            padding: 6px 8px;
+            font-size: 12px;
+            border-radius: 6px;
+            display: none;
+            max-width: 260px;
+            white-space: pre-wrap;
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        @media print {
+            @page {
+                margin: 12mm;
+            }
+
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            body {
+                background: #fff !important;
+                color: #000 !important;
+            }
+
+            .wrap {
+                max-width: 100% !important;
+                padding: 0 !important;
+            }
+
+            header .toolbar,
+            .help,
+            .cols,
+            footer,
+            #fileInput,
+            .tooltip {
+                display: none !important;
+            }
+
+            .big-title {
+                color: #000 !important;
+                background: transparent !important;
+                border-color: transparent !important;
+            }
+
+            .track {
+                background: #fff !important;
+                border: 1px solid #000 !important;
+                height: 420px !important;
+                padding: 24px !important;
+                overflow: visible !important;
+                page-break-inside: avoid;
+                break-inside: avoid;
+                width: 100% !important;
+            }
+
+            .baseline {
+                background: #000 !important;
+            }
+
+            .tick {
+                display: none !important;
+            }
+
+            .marker .tag {
+                background: #fff !important;
+                color: #000 !important;
+                max-width: 120px !important;
+                font-size: 11px !important;
+                box-shadow: none !important;
+            }
+
+            #track .marker {
+                left: calc(var(--pct) * 1%) !important;
+                transform: translateX(-50%) !important;
+            }
+        }
+
+        /* --- Ambient Background Glow (subtle) --- */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 1600px;
+            height: 1600px;
+            background:
+                radial-gradient(circle, rgba(99, 102, 241, 0.09) 0%, transparent 70%),
+                radial-gradient(circle, rgba(59, 130, 246, 0.06) 0%, transparent 85%);
+            filter: blur(100px);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .footer-bar {
+            display: flex;
+            justify-content: space-between;
+            /* pushes left and right apart */
+            align-items: center;
+            padding: 12px 0px;
+            border-top: 1px solid #eee;
+            font-size: 14px;
+            color: #777;
+        }
+
+        .footer-left {
+            /* inherits styling – adjust if needed */
+        }
+
+        .footer-right a {
+            color: #007aff;
+            /* iOS link blue */
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .footer-right a:hover {
+            text-decoration: underline;
+        }
+
+        /* Header glow for the app (use .title-bar, not header.nav) */
+        .title-bar {
+            position: relative;
+            z-index: 1;
+        }
+
+        .title-bar::after {
+            content: "";
+            position: absolute;
+            left: 50%;
+            top: -80px;
+            /* lift the glow above the header a bit */
+            transform: translateX(-50%);
+            width: 1100px;
+            /* wider than the header content */
+            height: 360px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.16) 0%, transparent 70%);
+            filter: blur(90px);
+            pointer-events: none;
+            z-index: 0;
+            /* behind header content */
+        }
+
+        /* ensure header children sit above the glow */
+        .title-bar>* {
+            position: relative;
+            z-index: 1;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <header class="title-bar">
+            <h1 id="bigTitle" class="big-title" contenteditable="true" spellcheck="false" data-placeholder=""></h1>
+            <div class="toolbar">
+                <div class="group">
+                    <button class="btn" id="zoomIn">Zoom +</button>
+                    <button class="btn" id="zoomOut">Zoom −</button>
+                    <button class="btn" id="resetView">Reset View</button>
+                    <button class="btn" id="fitBtn">Fit 0–100%</button>
+                    <button class="btn" id="deleteMarker" title="">Delete Marker</button>
+                    <button class="btn" id="newTimeline">New Timeline</button>
+                    <button class="btn primary" id="openHelp">Help</button>
+                </div>
+                <div class="group">
+                    <button class="btn" id="tickMode">Grid: Auto</button>
+                    <button class="btn" id="exportJSON" onclick="save()">Save Timeline</button>
+                    <button class="btn" id="importBtn" onclick="load()">Load Timeline</button>
+                    <button class="btn" id="printPDF">Print / Save as PDF</button>
+                </div>
+            </div>
+        </header>
+
+        <div class="help">
+            <button class="btn" id="addGuide" title="Add a guide marker">Add guide</button>
+            <div>Click the track to add a marker</div>
+            <div>• Drag markers to move • Click a marker to edit</div>
+        </div>
+
+        <div class="track" id="track">
+            <div class="baseline"></div>
+            <div class="tick" style="left: 44px;">0%</div>
+            <div class="tick" style="left: 147.76px;">10%</div>
+            <div class="tick" style="left: 251.52px;">20%</div>
+            <div class="tick" style="left: 355.28px;">30%</div>
+            <div class="tick" style="left: 459.04px;">40%</div>
+            <div class="tick" style="left: 562.8px;">50%</div>
+            <div class="tick" style="left: 666.56px;">60%</div>
+            <div class="tick" style="left: 770.32px;">70%</div>
+            <div class="tick" style="left: 874.08px;">80%</div>
+            <div class="tick" style="left: 977.84px;">90%</div>
+            <div class="tick" style="left: 1081.6px;">100%</div>
+        </div>
+
+        <div class="cols">
+            <!-- Scroll slider for timeline -->
+            <div style="flex-grow: 1;display: flex;flex-direction: column;">
+                <div>
+                    <input type="range" id="scrollRange" min="0" max="100" value="0" style="width:100%">
+                </div>
+                <div class="panel">
+                    <h3 style="margin:0 0 10px 0; font-size:16px;">Markers</h3>
+                    <ul id="markerList">
+                    </ul>
+                </div>
+            </div>
+            <div class="panel">
+                <h3 style="margin:0 0 10px 0; font-size:16px;">Inspector</h3>
+                <div id="inspector" class="muted">
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-bar">
+            genny for personal use only
+        </div>
+
+        <input type="file" id="fileInput" accept="application/json" style="display:none;">
+    </div>
+
+    <script>
+        (function () {
+            const STORAGE_KEY = "simple_timeline_marker_v5";
+            const FREE_MODE = false; // free/demo build
+            const premiumGuard = (msg = "This is a premium feature.") => {
+                if (FREE_MODE) {alert(msg); return true;}
+                return false;
+            };
+
+            function uid() {return Math.random().toString(36).slice(2, 9);}
+            function clamp(n, min, max) {return Math.max(min, Math.min(max, n));}
+
+            // Grey-out logic for Delete Marker button
+            function updateDeleteBtn() {
+                const btn = document.getElementById("deleteMarker");
+                if (!btn) return;
+                const m = state.markers.find(mm => mm.id === state.selectedId);
+                // allow deleting guides (acts) — only disable when nothing is selected
+                const disabled = !m;
+                btn.disabled = disabled;
+                btn.title = disabled ? "Select a marker to delete" : "";
+            }
+
+            const palette = ["#06b6d4", "#8b5cf6", "#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#14b8a6", "#f472b6", "#22c55e"];
+            function randColor() {return palette[Math.floor(Math.random() * palette.length)];}
+
+            const track = document.getElementById("track");
+            const listEl = document.getElementById("markerList");
+            const inspector = document.getElementById("inspector");
+            const bigTitle = document.getElementById("bigTitle");
+
+            const tooltip = document.createElement("div");
+            tooltip.id = "tooltip";
+            tooltip.className = "tooltip";
+            document.body.appendChild(tooltip);
+
+            let state = load() || {
+                title: "",
+                markers: [
+                    {id: uid(), x: 0.0, label: "Act I", note: "Start of story", color: "#4285F4", guide: true, lane: 0},
+                    {id: uid(), x: 0.3333, label: "Act II", note: "Start of Act II", color: "#FDB813", guide: true, lane: 0},
+                    {id: uid(), x: 0.6666, label: "Act III", note: "Start of Act III", color: "#E63946", guide: true, lane: 0},
+                ],
+                zoom: 1,
+                offset: 0,
+                selectedId: null,
+                tickMode: "auto",
+            };
+
+            const MAX_TITLE = 80;
+            function renderTitle() {
+                if (!state.title) {
+                    bigTitle.setAttribute("data-placeholder", "Click to add title");
+                    bigTitle.textContent = "";
+                } else {
+                    bigTitle.removeAttribute("data-placeholder");
+                    bigTitle.textContent = state.title;
+                }
+            }
+            bigTitle.addEventListener("input", () => {
+                let text = bigTitle.textContent || "";
+                if (text.length > MAX_TITLE) {
+                    text = text.slice(0, MAX_TITLE);
+                    const sel = window.getSelection();
+                    bigTitle.textContent = text;
+                    const range = document.createRange();
+                    range.selectNodeContents(bigTitle);
+                    range.collapse(false);
+                    sel.removeAllRanges(); sel.addRange(range);
+                }
+                state.title = text === "Click to add title" ? "" : text;
+                save();
+                requestAnimationFrame(() => staggerLabelsSmart());
+            });
+            const scrollRange = document.getElementById("scrollRange");
+            scrollRange.addEventListener("input", (e) => {
+                const t = (Number(e.target.value) || 0) / 100; // 0..1
+                state.offset = - t * maxScroll();
+                console.log("scroll to", state.offset);
+                renderAll();
+            });
+
+            // Keep the scrollRange UI synced with state.offset / maxScroll()
+            function updateScrollRange() {
+                const max = maxScroll();
+                if (max <= 0) {
+                    scrollRange.value = "0";
+                    return;
+                }
+                // t is 0..1 where 0 = left (offset 0), 1 = fully scrolled right (offset = -max)
+                const t = Math.round((-state.offset / max) * 100);
+                scrollRange.value = String(clamp(t, 0, 100));
+            }
+            // initialize control to match loaded state
+            updateScrollRange();
+
+            bigTitle.addEventListener("focus", () => {
+                if (!state.title) {bigTitle.textContent = ""; bigTitle.classList.remove("placeholder");}
+            });
+            bigTitle.addEventListener("blur", () => {
+                if (!state.title) {bigTitle.classList.add("placeholder"); bigTitle.textContent = "Click to add title";}
+            });
+            renderTitle();
+
+            function save() {
+                try {
+                    const payload = {
+                        title: state.title || "",
+                        markers: state.markers || [],
+                        zoom: state.zoom || 1,
+                        offset: state.offset || 0,
+                        selectedId: state.selectedId || null,
+                        tickMode: state.tickMode || "auto",
+                        _savedAt: Date.now()
+                    };
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+                } catch (err) {
+                    console.warn("Save failed:", err);
+                }
+            }
+            function load() {
+                try {
+                    const raw = localStorage.getItem(STORAGE_KEY);
+                    if (!raw) return null;
+                    const parsed = JSON.parse(raw);
+                    // Basic validation / sanitization
+                    if (!parsed || !Array.isArray(parsed.markers)) return null;
+                    parsed.markers = parsed.markers.map(m => ({
+                        id: String(m.id || uid()),
+                        x: typeof m.x === "number" ? clamp(m.x, 0, 1) : 0,
+                        label: String(m.label || "Beat"),
+                        note: String(m.note || ""),
+                        color: String(m.color || randColor()),
+                        guide: !!m.guide,
+                        lane: typeof m.lane === "number" ? m.lane : 0
+                    }));
+                    parsed.title = String(parsed.title || "");
+                    parsed.zoom = typeof parsed.zoom === "number" ? parsed.zoom : 1;
+                    parsed.offset = typeof parsed.offset === "number" ? parsed.offset : 0;
+                    parsed.selectedId = parsed.selectedId || null;
+                    parsed.tickMode = parsed.tickMode || "auto";
+                    return parsed;
+                } catch (err) {
+                    console.warn("Load failed:", err);
+                    return null;
+                }
+            }
+
+            // Export / Import JSON handlers
+            const exportBtn = document.getElementById("exportJSON");
+            const importBtn = document.getElementById("importBtn");
+            const fileInput = document.getElementById("fileInput");
+
+            if (exportBtn) {
+                exportBtn.addEventListener("click", () => {
+                    if (premiumGuard("Export/Save is a premium feature.")) return;
+                    try {
+                        const payload = {
+                            title: state.title || "",
+                            markers: state.markers || [],
+                            zoom: state.zoom || 1,
+                            offset: state.offset || 0,
+                            tickMode: state.tickMode || "auto",
+                            exportedAt: new Date().toISOString()
+                        };
+                        const json = JSON.stringify(payload, null, 2);
+                        const blob = new Blob([json], {type: "application/json"});
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement("a");
+                        a.href = url;
+                        const safeTitle = (state.title || "timeline").replace(/[^\w\-]+/g, "_").slice(0, 60);
+                        a.download = `${safeTitle || "timeline"}.json`;
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        URL.revokeObjectURL(url);
+                    } catch (err) {
+                        alert("Export failed. See console for details.");
+                        console.error(err);
+                    }
+                });
+            }
+
+            if (importBtn && fileInput) {
+                importBtn.addEventListener("click", () => {
+                    if (premiumGuard("Import is a premium feature.")) return;
+                    fileInput.value = ""; // clear previous selection
+                    fileInput.click();
+                });
+
+                fileInput.addEventListener("change", (ev) => {
+                    const f = ev.target.files && ev.target.files[0];
+                    if (!f) return;
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const obj = JSON.parse(String(e.target.result || ""));
+                            if (!obj || !Array.isArray(obj.markers)) {
+                                alert("Invalid timeline file (missing markers).");
+                                return;
+                            }
+                            if (!confirm("Load timeline from file? This will replace your current timeline.")) return;
+
+                            // Normalize incoming
+                            const newState = {
+                                title: String(obj.title || ""),
+                                markers: obj.markers.map(m => ({
+                                    id: String(m.id || uid()),
+                                    x: typeof m.x === "number" ? clamp(m.x, 0, 1) : 0,
+                                    label: String(m.label || "Beat"),
+                                    note: String(m.note || ""),
+                                    color: String(m.color || randColor()),
+                                    guide: !!m.guide,
+                                    lane: typeof m.lane === "number" ? m.lane : 0
+                                })),
+                                zoom: typeof obj.zoom === "number" ? obj.zoom : 1,
+                                offset: typeof obj.offset === "number" ? obj.offset : 0,
+                                selectedId: null,
+                                tickMode: obj.tickMode || "auto"
+                            };
+                            state = Object.assign(state, newState);
+                            save();
+                            renderAll();
+                            requestAnimationFrame(() => staggerLabelsSmart());
+                        } catch (err) {
+                            alert("Failed to import file. Make sure it's valid JSON.");
+                            console.error(err);
+                        }
+                    };
+                    reader.readAsText(f);
+                });
+            }
+            // --- Geometry helpers ---
+            function width() {return track.getBoundingClientRect().width;}
+            function paddings() {
+                const cs = getComputedStyle(track);
+                return [parseFloat(cs.paddingLeft) || 0, parseFloat(cs.paddingRight) || 0];
+            }
+            function contentWidth() {
+                const w = width();
+                const [padL, padR] = paddings();
+                return Math.max(0, w - padL - padR);
+            }
+            function maxScroll() {
+                // How much the zoomed content exceeds the visible viewport
+                return Math.max(0, contentWidth() * state.zoom - width());
+            }
+            function clampOffsetInPlace() {
+                state.offset = clamp(state.offset, -maxScroll(), 0);
+            }
+
+            // NEW
+            function pctToPx(pct) {
+                const [padL] = paddings();
+                return padL + pct * contentWidth() * state.zoom + state.offset;
+            }
+            function pxToPct(px) {
+                const [padL] = paddings();
+                return clamp((px - padL - state.offset) / (contentWidth() * state.zoom), 0, 1);
+            }
+            // --- Ticks ---
+            function renderTicks() {
+                [...track.querySelectorAll(".tick")].forEach(n => n.remove());
+
+                let step;
+                if (state.tickMode === "5") step = 0.05;
+                else step = state.zoom >= 4 ? 0.02 : state.zoom >= 2 ? 0.05 : 0.1;
+
+                const wView = width();                 // full box (incl. padding)
+                const [padL] = paddings();
+                const wContent = contentWidth();       // inner box
+
+                for (let p = 0; p <= 1.0001; p += step) {
+                    const left = padL + (p * wContent * state.zoom) + state.offset;
+                    if (left < 0 || left > wView) continue; // only draw visible ticks
+                    const el = document.createElement("div");
+                    el.className = "tick";
+                    el.style.left = left + "px";
+                    el.textContent = Math.round(p * 100) + "%";
+                    track.appendChild(el);
+                }
+            }
+
+            function renderMarkers() {
+                [...track.querySelectorAll(".marker")].forEach(n => n.remove());
+                const sorted = [...state.markers].sort((a, b) => a.x - b.x);
+                const w = width();
+                for (const m of sorted) {
+                    const el = document.createElement("div");
+                    el.className = "marker";
+                    let left = pctToPx(m.x);
+                    left = Math.max(8, Math.min(left, w - 8));
+                    el.style.left = left + "px";
+                    el.style.setProperty('--pct', (m.x * 100).toFixed(4));
+                    el.dataset.id = m.id;
+                    el.dataset.guide = m.guide ? "1" : "0";
+
+                    const tag = document.createElement("div");
+                    tag.className = "tag";
+                    tag.style.borderColor = m.color;
+                    tag.style.color = m.color;
+                    tag.textContent = m.label + (m.guide ? "" : "");
+                    el.appendChild(tag);
+
+                    const stem = document.createElement("div");
+                    stem.className = "stem";
+                    stem.style.backgroundColor = m.color;
+                    stem.style.setProperty("--stem-color", m.color);
+                    el.appendChild(stem);
+
+                    if (!m.guide) {
+                        el.addEventListener("mouseenter", (e) => {
+                            const note = (m.note || "").trim();
+                            if (!note) return;
+                            tooltip.textContent = note;
+                            tooltip.style.display = "block";
+                            // position immediately above cursor, centered
+                            const tw = tooltip.offsetWidth || 160;
+                            const th = tooltip.offsetHeight || 28;
+                            const left = Math.min(Math.max(8, e.clientX - (tw / 2)), window.innerWidth - tw - 8);
+                            const top = Math.max(8, e.clientY - th - 12);
+                            tooltip.style.left = left + "px";
+                            tooltip.style.top = top + "px";
+                        });
+                        el.addEventListener("mousemove", (e) => {
+                            if (tooltip.style.display === "block") {
+                                const tw = tooltip.offsetWidth || 160;
+                                const th = tooltip.offsetHeight || 28;
+                                const left = Math.min(Math.max(8, e.clientX - (tw / 2)), window.innerWidth - tw - 8);
+                                const top = Math.max(8, e.clientY - th - 12);
+                                tooltip.style.left = left + "px";
+                                tooltip.style.top = top + "px";
+                            }
+                        });
+                        el.addEventListener("mouseleave", () => {tooltip.style.display = "none";});
+                    } else {
+                        // Show tooltip for both beats and guides. For guides include the label and note.
+                        el.addEventListener("mouseenter", (e) => {
+                            const note = (m.note || "").trim();
+                            const content = `Guide: ${m.label}` + (note ? "\n\n" + note : "");
+                            if (!content) return;
+                            tooltip.textContent = content;
+                            tooltip.style.display = "block";
+                            const tw = tooltip.offsetWidth || 160;
+                            const th = tooltip.offsetHeight || 28;
+                            const left = Math.min(Math.max(8, e.clientX - (tw / 2)), window.innerWidth - tw - 8);
+                            const top = Math.max(8, e.clientY - th - 12);
+                            tooltip.style.left = left + "px";
+                            tooltip.style.top = top + "px";
+                        });
+                        el.addEventListener("mousemove", (e) => {
+                            if (tooltip.style.display === "block") {
+                                const tw = tooltip.offsetWidth || 160;
+                                const th = tooltip.offsetHeight || 28;
+                                const left = Math.min(Math.max(8, e.clientX - (tw / 2)), window.innerWidth - tw - 8);
+                                const top = Math.max(8, e.clientY - th - 12);
+                                tooltip.style.left = left + "px";
+                                tooltip.style.top = top + "px";
+                            }
+                        });
+                        el.addEventListener("mouseleave", () => {tooltip.style.display = "none";});
+                    }
+
+                    el.addEventListener("mousedown", (e) => {
+                        e.stopPropagation();
+                        select(m.id);
+                        startDrag(e, m.id);
+                        if (tooltip) {tooltip.style.display = "none";}
+                    });
+                    el.addEventListener("click", (e) => {
+                        e.stopPropagation();
+                        select(m.id);
+                    });
+
+                    track.appendChild(el);
+                }
+            }
+
+            /* ---------- REPLACED: renderList() with inline % editing ---------- */
+
+            function renderList() {
+                listEl.innerHTML = "";
+                const sorted = [...state.markers].sort((a, b) => a.x - b.x);
+
+                for (const m of sorted) {
+                    const li = document.createElement("li");
+                    li.className = "row" + (state.selectedId === m.id ? " sel" : "");
+                    li.dataset.id = m.id;
+
+                    // Only select when clicking NON-% areas (prevents re-render before edit starts)
+                    li.addEventListener("click", (evt) => {
+                        if (evt.target.closest(".pct, input")) return;
+                        select(m.id);
+                    });
+
+                    const dot = document.createElement("div");
+                    dot.className = "dot";
+                    dot.style.backgroundColor = m.color;
+
+                    const name = document.createElement("div");
+                    name.textContent = m.label + (m.guide ? " (guide)" : "");
+
+                    const pct = document.createElement("div");
+                    pct.className = "muted pct";
+                    pct.style.marginLeft = "auto";
+                    pct.textContent = Math.round(m.x * 100) + "%";
+                    pct.title = "Click to edit % · Enter to save · Esc to cancel";
+                    pct.tabIndex = 0;
+
+                    li.appendChild(dot);
+                    li.appendChild(name);
+                    li.appendChild(pct);
+                    listEl.appendChild(li);
+                }
+                updateDeleteBtn();
+            }
+
+            /* ---------- NEW: Delegated handlers + editor for % ---------- */
+            listEl.addEventListener("click", (e) => {
+                const pctEl = e.target.closest(".pct");
+                if (!pctEl) return;
+                e.stopPropagation();                 // <- important
+                const li = pctEl.closest("li");
+                const id = li?.dataset.id;
+                const m = state.markers.find(mm => mm.id === id);
+                if (!m) return;
+                startPctInlineEdit(pctEl, m);
+            }, true); // <- capture = true
+
+            listEl.addEventListener("keydown", (e) => {
+                if (e.key !== "Enter") return;
+                const pctEl = e.target.closest(".pct");
+                if (!pctEl) return;
+                e.preventDefault();
+                e.stopPropagation();                 // <- important
+                const li = pctEl.closest("li");
+                const id = li?.dataset.id;
+                const m = state.markers.find(mm => mm.id === id);
+                if (!m) return;
+                startPctInlineEdit(pctEl, m);
+            }, true); // <- capture = true
+
+            function startPctInlineEdit(pctEl, m) {
+                // Prevent multiple editors
+                if (pctEl.dataset.editing === "1") return;
+                pctEl.dataset.editing = "1";
+
+                const current = Math.round(m.x * 100);
+                const input = document.createElement("input");
+                input.type = "text";
+                input.inputMode = "numeric";
+                input.pattern = "\\d*";
+                input.value = String(current);
+                input.style.width = "64px";
+                input.style.textAlign = "right";
+                input.style.background = "var(--panel2)";
+                input.style.border = "1px solid var(--border)";
+                input.style.color = "var(--text)";
+                input.style.borderRadius = "8px";
+                input.style.padding = "4px 6px";
+                input.style.fontSize = "14px";
+
+                // Replace node
+                pctEl.replaceWith(input);
+                input.focus();
+                input.select();
+
+                const cleanup = () => {
+                    // Replace input with fresh pct element reflecting current state
+                    const pct = document.createElement("div");
+                    pct.className = "muted pct";
+                    pct.style.marginLeft = "auto";
+                    pct.textContent = Math.round(m.x * 100) + "%";
+                    pct.title = "Click to edit %";
+                    input.replaceWith(pct);
+                };
+
+                const commit = () => {
+                    const raw = input.value.trim();
+                    let val = parseInt(raw, 10);
+                    if (Number.isNaN(val)) {cleanup(); return;}
+                    val = clamp(val, 0, 100);
+                    m.x = val / 100;
+
+                    // Save + re-render everything (position, list, inspector)
+                    save();
+                    renderAll();
+                    // Re-focus the % we just edited (nice feel)
+                    const row = [...listEl.querySelectorAll("li")].find(li => li.dataset.id === m.id);
+                    const pct = row?.querySelector(".pct");
+                    pct?.focus();
+                };
+
+                input.addEventListener("keydown", (e) => {
+                    if (e.key === "Enter") {e.preventDefault(); commit();}
+                    else if (e.key === "Escape") {e.preventDefault(); cleanup();}
+                });
+                input.addEventListener("blur", commit);
+            }
+
+            function renderInspector() {
+                const m = state.markers.find(mm => mm.id === state.selectedId);
+                if (!m) {inspector.innerHTML = '<div class="muted">Select a marker to edit its label & note.</div>'; updateDeleteBtn(); return;}
+
+                // Inspector inputs are editable for all markers (including acts)
+                inspector.innerHTML = `
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+      <label class="small">Label</label>
+      <input type="text" id="i_label" value="${escapeHTML(m.label)}" maxlength="24" />
+    </div>
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+      <label class="small">Color</label>
+      <input type="color" id="i_color" value="${m.color}" />
+    </div>
+    <div style="margin-bottom:10px;">
+      <label class="small" style="display:block; margin-bottom:4px;">Note</label>
+      <textarea id="i_note" placeholder="Details for this beat...">${escapeHTML(m.note || "")}</textarea>
+    </div>
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <button class="btn" id="i_delete">Delete</button>
+      <div style="margin-left: 20px;" class="muted">Autosaved</div>
+    </div>
+  `;
+
+                const i_label = document.getElementById("i_label");
+                const i_color = document.getElementById("i_color");
+                const i_note = document.getElementById("i_note");
+                const i_delete = document.getElementById("i_delete");
+
+                i_label.addEventListener("input", () => {
+                    m.label = i_label.value;
+                    syncTag(m.id);
+                    save(); renderList();
+                    requestAnimationFrame(() => staggerLabelsSmart());
+                });
+                i_color.addEventListener("input", () => {m.color = i_color.value; syncColor(m.id); save(); renderList();});
+                i_note.addEventListener("input", () => {m.note = i_note.value; save();});
+
+                if (i_delete) {
+                    i_delete.addEventListener("click", () => {
+                        if (!confirm(`Delete marker "${m.label}"?`)) return;
+                        state.markers = state.markers.filter(mm => mm.id !== m.id);
+                        state.selectedId = null;
+                        save(); renderAll();
+                        requestAnimationFrame(() => staggerLabelsSmart());
+                    });
+                }
+                updateDeleteBtn();
+            }
+
+            function escapeHTML(s) {
+                return s.replace(/[&<>"']/g, (c) => ({"&": "&amp;", "<": "&lt;", "&gt;": "&gt;", "\"": "&quot;", "'": "&#39;"}[c]));
+            }
+
+            function syncTag(id) {
+                const el = track.querySelector(`.marker[data-id="${id}"] .tag`);
+                const m = state.markers.find(x => x.id === id);
+                if (el && m) el.textContent = m.label + (m.guide ? "" : "");
+            }
+            function syncColor(id) {
+                const mk = track.querySelector(`.marker[data-id="${id}"]`);
+                const m = state.markers.find(x => x.id === id);
+                if (mk && m) {
+                    const tag = mk.querySelector(".tag"); if (tag) {tag.style.borderColor = m.color; tag.style.color = m.color;}
+                    const stem = mk.querySelector(".stem"); if (stem) {stem.style.backgroundColor = m.color; stem.style.setProperty("--stem-color", m.color);}
+                }
+            }
+
+            function select(id) {
+                state.selectedId = id; save();
+                renderList(); renderInspector();
+                updateDeleteBtn();
+            }
+
+            // Add marker / pan
+            track.addEventListener("mousedown", (e) => {
+                if (e.target.closest(".marker")) return;
+                if (e.button === 0) {
+                    const rect = track.getBoundingClientRect();
+                    const pct = pxToPct(e.clientX - rect.left);
+                    let label = prompt("Marker label (1–2 words):", "Beat");
+                    if (label === null) return;
+                    label = (label || "Beat").slice(0, 16);
+                    const m = {id: uid(), x: pct, label, note: "", color: randColor(), guide: false};
+                    state.markers.push(m);
+                    state.selectedId = m.id;
+                    save(); renderAll();
+                    requestAnimationFrame(() => staggerLabelsSmart());
+                } else {
+                    startPan(e);
+                }
+            });
+
+            // Dragging
+            let dragRAF = null;
+            function startDrag(e, id) {
+                e.preventDefault();
+                const move = (ev) => {
+                    const rect = track.getBoundingClientRect();
+                    const px = ev.clientX - rect.left;
+                    const pct = pxToPct(px);
+                    const m = state.markers.find(mm => mm.id === id);
+                    if (m) {m.x = pct;}
+                    save();
+                    const mk = track.querySelector(`.marker[data-id="${id}"]`);
+                    if (mk) {mk.style.left = Math.max(8, Math.min(pctToPx(m.x), width() - 8)) + "px";}
+                    renderList();
+                    if (!dragRAF) {
+                        dragRAF = requestAnimationFrame(() => {staggerLabelsSmart(); dragRAF = null;});
+                    }
+                };
+                const up = () => {
+                    window.removeEventListener("mousemove", move);
+                    window.removeEventListener("mouseup", up);
+                    requestAnimationFrame(() => staggerLabelsSmart());
+                };
+                window.addEventListener("mousemove", move);
+                window.addEventListener("mouseup", up);
+            }
+
+            // Panning
+            let pan = {active: false, startX: 0, startOffset: 0};
+            let panRAF = null;
+            function startPan(e) {
+                pan.active = true; pan.startX = e.clientX; pan.startOffset = state.offset;
+                const move = (ev) => {
+                    if (!pan.active) return;
+                    const dx = ev.clientX - pan.startX;
+                    state.offset = pan.startOffset + dx;
+                    clampOffsetInPlace();       // <-- keep within bounds
+
+                    renderTicks();
+
+                    for (const mk of track.querySelectorAll(".marker")) {
+                        const id = mk.dataset.id;
+                        const m = state.markers.find(x => x.id === id);
+                        if (m) {mk.style.left = Math.max(8, Math.min(pctToPx(m.x), width() - 8)) + "px";}
+                    }
+                    if (!panRAF) {
+                        panRAF = requestAnimationFrame(() => {staggerLabelsSmart(); panRAF = null;});
+                    }
+                };
+                const up = () => {
+                    pan.active = false; save();
+                    window.removeEventListener("mousemove", move);
+                    window.removeEventListener("mouseup", up);
+                    requestAnimationFrame(() => staggerLabelsSmart());
+                };
+                window.addEventListener("mousemove", move);
+                window.addEventListener("mouseup", up);
+            }
+
+            // View controls
+            document.getElementById("zoomIn").addEventListener("click", () => {
+                state.zoom = clamp(state.zoom * 1.25, 0.25, 8);
+                clampOffsetInPlace();     // <<< NEW
+                save(); renderAll();
+                updateScrollRange();
+                requestAnimationFrame(() => staggerLabelsSmart());
+            });
+
+            document.getElementById("zoomOut").addEventListener("click", () => {
+                state.zoom = clamp(state.zoom / 1.25, 0.25, 8);
+                clampOffsetInPlace();     // <<< NEW
+                save(); renderAll();
+                updateScrollRange();
+                requestAnimationFrame(() => staggerLabelsSmart());
+            });
+
+            document.getElementById("resetView").addEventListener("click", () => {
+                state.zoom = 1;
+                state.offset = 0;
+                clampOffsetInPlace();     // <<< optional but safe
+                save(); renderAll();
+                updateScrollRange();
+                requestAnimationFrame(() => staggerLabelsSmart());
+            });
+
+            document.getElementById("fitBtn").addEventListener("click", () => {
+                state.zoom = 1;
+                state.offset = 0;
+                clampOffsetInPlace();     // <<< optional but safe
+                save(); renderAll();
+                updateScrollRange();
+                requestAnimationFrame(() => staggerLabelsSmart());
+            });
+
+            // Delete selected marker (toolbar)
+            document.getElementById("deleteMarker").addEventListener("click", () => {
+                const m = state.markers.find(mm => mm.id === state.selectedId);
+                if (!m) {alert("No marker selected."); return;}
+                if (!confirm(`Delete marker "${m.label}"?`)) return;
+                state.markers = state.markers.filter(mm => mm.id !== state.selectedId);
+                state.selectedId = null;
+                save(); renderAll();
+                requestAnimationFrame(() => staggerLabelsSmart());
+            });
+
+            function renderTicks() {
+                [...track.querySelectorAll(".tick")].forEach(n => n.remove());
+
+                let step;
+                if (state.tickMode === "5") step = 0.05;
+                else step = state.zoom >= 4 ? 0.02 : state.zoom >= 2 ? 0.05 : 0.1;
+
+                const wView = width();                 // full box (incl. padding)
+                const [padL] = paddings();
+                const wContent = contentWidth();       // inner width, minus left/right padding
+
+                for (let p = 0; p <= 1.0001; p += step) {
+                    const left = padL + (p * wContent * state.zoom) + state.offset;
+
+                    if (left < 0 || left > wView) continue;
+                    const el = document.createElement("div");
+                    el.className = "tick";
+                    el.style.left = left + "px";
+                    el.textContent = Math.round(p * 100) + "%";
+                    track.appendChild(el);
+                }
+            }
+            // --- Ticks toggle button ---
+            const tickBtn = document.getElementById("tickMode");
+
+            function updateTickBtn() {
+                tickBtn.textContent = (state.tickMode === "auto") ? "Grid: Auto" : "Grid: 5%";
+            }
+
+            tickBtn.addEventListener("click", () => {
+                state.tickMode = (state.tickMode === "auto") ? "5" : "auto";
+                renderTicks();                 // redraw ticks with new step
+                requestAnimationFrame(() => staggerLabelsSmart());
+                updateTickBtn();               // refresh button label
+            });
+
+            updateTickBtn();                 // set initial label
+
+            // Print relayout
+            let _prePrintView = null;
+            function relayoutForPrint() {
+                _prePrintView = {zoom: state.zoom, offset: state.offset};
+                state.offset = 0; state.zoom = 1;
+                renderAll(); requestAnimationFrame(renderAll);
+            }
+            function restoreAfterPrint() {
+                if (_prePrintView) {state.zoom = _prePrintView.zoom; state.offset = _prePrintView.offset; _prePrintView = null; renderAll();}
+            }
+            window.addEventListener("beforeprint", relayoutForPrint);
+            window.addEventListener("afterprint", restoreAfterPrint);
+
+            // Label staggering
+            function staggerLabelsSmart(minGap = 70, dropPx = 22, maxLanes = 4) {
+                const markers = Array.from(document.querySelectorAll('#track .marker'))
+                    .sort((a, b) => a.offsetLeft - b.offsetLeft);
+
+                for (const mk of markers) {
+                    const tag = mk.querySelector('.tag');
+                    if (tag) tag.style.marginTop = '0px';
+                }
+
+                const centers = Array(maxLanes).fill(-Infinity);
+                const halfWidths = Array(maxLanes).fill(0);
+                const pad = 8;
+
+                for (const mk of markers) {
+                    const tag = mk.querySelector('.tag');
+                    if (!tag) continue;
+
+                    const isGuide = mk.dataset.guide === "1";
+                    const x = mk.offsetLeft;
+                    const halfW = tag.offsetWidth / 2;
+                    const startLane = isGuide ? 0 : 1;
+
+                    let lane = startLane;
+                    for (; lane < maxLanes; lane++) {
+                        const dx = x - centers[lane];
+                        const need = halfWidths[lane] + halfW + pad;
+                        if (dx >= Math.max(minGap, need)) break;
+                    }
+                    if (lane >= maxLanes) lane = maxLanes - 1;
+
+                    tag.style.marginTop = (lane * dropPx) + 'px';
+                    centers[lane] = x;
+                    halfWidths[lane] = halfW;
+                }
+            }
+
+            function renderAll() {
+                renderTicks();
+                renderMarkers();
+                renderList();
+                renderInspector();
+                updateDeleteBtn();
+                requestAnimationFrame(() => staggerLabelsSmart());
+            }
+
+            // Resize debounce
+            let resizeTimer = null;
+            window.addEventListener("resize", () => {
+                if (resizeTimer) clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(() => {
+                    // offset may now be out of bounds if width changed
+                    clampOffsetInPlace();
+                    renderAll();
+                    requestAnimationFrame(() => staggerLabelsSmart());
+                }, 120);
+            });
+
+            document.getElementById("printPDF").addEventListener("click", () => {
+                setTimeout(() => window.print(), 0);
+            });
+
+            renderAll();
+
+            const addGuideBtn = document.getElementById("addGuide");
+            if (addGuideBtn) {
+                addGuideBtn.addEventListener("click", () => {
+                    const label = prompt("Guide label (e.g. Act I):", "Act I");
+                    if (label === null) return;
+                    const m = {
+                        id: uid(),
+                        x: 0.5,
+                        label: (label || "Guide").slice(0, 24),
+                        note: "",
+                        color: randColor(),
+                        guide: true,
+                        lane: 0
+                    };
+                    state.markers.push(m);
+                    state.selectedId = m.id;
+                    save();
+                    renderAll();
+                    requestAnimationFrame(() => staggerLabelsSmart());
+                });
+            }
+
+            document.getElementById("newTimeline").addEventListener("click", () => {
+                if (!confirm("Start a new timeline? This will replace your current one.")) return;
+                state = {
+                    title: "",
+                    markers: [
+                        {id: uid(), x: 0.0, label: "Act I", note: "Start of story", color: "#4285F4", guide: true},
+                        {id: uid(), x: 0.3333, label: "Act II", note: "Start of Act II", color: "#FDB813", guide: true},
+                        {id: uid(), x: 0.6666, label: "Act III", note: "Start of Act III", color: "#E63946", guide: true},
+                    ],
+                    zoom: 1,
+                    offset: 0,
+                    selectedId: null,
+                    tickMode: "auto"
+                };
+                bigTitle.classList.add("placeholder");
+                bigTitle.textContent = "Click to add title";
+                save();
+                renderAll();
+                requestAnimationFrame(() => staggerLabelsSmart());
+            });
+            // Help button
+            document.getElementById('openHelp')?.addEventListener('click', () => {
+                alert("Ask Gen");
+            });
+
+        })();
+    </script>
+    <div id="tooltip" class="tooltip" style="display: none;"></div>
+
+</body>
+
+</html>
